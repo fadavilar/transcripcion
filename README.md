@@ -28,7 +28,7 @@ Abre **https://fadavilar.github.io/transcripcion/** en Chrome o Edge (computador
 
 ### 📲 Instalar en el celular (o en el computador)
 
-Abre **https://fadavilar.github.io/transcripcion/** en Chrome, Edge o Safari y usa la opción del navegador para instalarla:
+Al abrir **https://fadavilar.github.io/transcripcion/**, arriba de la página aparece un aviso con un botón **"Instalar app"** (en Android/computador) o con los pasos para hacerlo (en iPhone/iPad, donde Safari no permite un botón). También puedes usar la opción del navegador directamente:
 
 - **Android (Chrome):** menú ⋮ → "Instalar app" (o el banner "Agregar a pantalla de inicio" que aparece solo).
 - **iPhone/iPad (Safari):** botón Compartir → "Agregar a inicio".

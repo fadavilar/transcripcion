@@ -784,3 +784,54 @@ applyFont(fontPct);
 })();
 setMode('auto');
 window.app = { state, run, addFile, renderList, readOpts };
+
+// ---------- Instalar como app: banner con botón, además del menú del navegador ----------
+// Android dispara beforeinstallprompt y deja instalar con un botón propio. iOS no tiene esa
+// API (no hay forma de abrir el diálogo de instalación desde la página), así que ahí solo se
+// explican los pasos manuales (Compartir → Agregar a inicio).
+const INSTALAR_TEXTOS = {
+  boton: 'Queda en tu pantalla de inicio con su propio ícono, sin pasar por una tienda de apps.',
+  ios: 'Toca Compartir en el navegador y luego «Agregar a inicio». Queda con su ícono, junto a tus otras apps.',
+  android: 'Toca el menú ⋮ del navegador y elige «Instalar aplicación». Queda con su ícono, junto a tus otras apps.',
+  otro: 'Usa el ícono de instalar de la barra de direcciones. En el celular queda en la pantalla de inicio con su ícono.',
+};
+function plataformaInstalar(ua, puntosTactiles = 0) {
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && puntosTactiles > 1)) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  return 'otro';
+}
+function iniciarInstalacion() {
+  const inicio = $('#instalarInicio');
+  if (!inicio) return;
+  const sistema = plataformaInstalar(navigator.userAgent, navigator.maxTouchPoints);
+  let aviso = null;
+  let instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const pintar = () => {
+    inicio.hidden = instalada || !(aviso || sistema !== 'otro');
+    const texto = INSTALAR_TEXTOS[aviso ? 'boton' : sistema];
+    inicio.querySelectorAll('[data-instalar-texto]').forEach((p) => { p.textContent = texto; });
+    inicio.querySelectorAll('[data-instalar]').forEach((b) => { b.hidden = !aviso; });
+  };
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); // se guarda para mostrarlo cuando la persona toque el botón
+    aviso = e;
+    pintar();
+  });
+  window.addEventListener('appinstalled', () => {
+    aviso = null;
+    instalada = true;
+    pintar();
+  });
+  inicio.querySelectorAll('[data-instalar]').forEach((b) => {
+    b.addEventListener('click', async () => {
+      if (!aviso) return;
+      const pendiente = aviso;
+      aviso = null;
+      pendiente.prompt();
+      await pendiente.userChoice;
+      pintar();
+    });
+  });
+  pintar();
+}
+iniciarInstalacion();

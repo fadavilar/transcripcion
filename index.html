@@ -53,6 +53,11 @@
   header { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem 1rem; justify-content: space-between; margin-bottom: 1rem; }
   h1 { font-size: 1.5rem; line-height: 1.2; margin: 0; }
   .badge { display: inline-block; font-size: .75rem; padding: .2rem .65rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; margin-top: .4rem; }
+  .instalar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem 1rem; margin-bottom: .9rem; }
+  .instalar img { flex: none; border-radius: .6rem; }
+  .instalar-texto { flex: 1 1 200px; min-width: 0; }
+  .instalar-texto strong { display: block; }
+  .instalar-texto p { margin: .2rem 0 0; }
   .sub { color: var(--muted); margin: .25rem 0 0; font-size: .875rem; }
   .small { font-size: .8125rem; }
   /* Barra de preferencias: tema y tamaño de letra */
@@ -157,6 +162,15 @@
       </div>
     </div>
   </header>
+
+  <div class="instalar" id="instalarInicio" hidden>
+    <img src="icons/icon-192.png" width="48" height="48" alt="">
+    <div class="instalar-texto">
+      <strong>Instálala en tu celular</strong>
+      <p class="muted small" data-instalar-texto></p>
+    </div>
+    <button type="button" class="btn primary" data-instalar hidden>📲 Instalar app</button>
+  </div>
 
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-mode="auto" aria-selected="true">⚡ Automático</button>
