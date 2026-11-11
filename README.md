@@ -94,7 +94,7 @@ transcripcion/
 ├── index.html              # Marcado, estilos, y el worker de transcripción (inline a propósito, ver nota)
 ├── src/
 │   └── app.js               # Lógica de la aplicación (pestañas, conversión a Markdown, OCR, transcripción, QR)
-├── manifest.webmanifest     # Metadatos de instalación como app (nombre, ícono, colores)
+├── manifest.json            # Metadatos de instalación como app (nombre, ícono, colores)
 ├── sw.js                    # Service worker mínimo (cachea solo el "shell", ver nota)
 ├── icons/                   # Íconos de instalación (Android, iOS, favicon) en los tamaños requeridos
 ├── favicon.ico
