@@ -4,7 +4,7 @@
 // modelos de Whisper NO se cachean aquí: cada una ya gestiona su propia caché
 // (p. ej. transformers.js guarda los modelos en el Cache Storage del navegador por
 // su cuenta), y no tiene sentido duplicar archivos de cientos de MB en esta caché.
-const CACHE = 'transcriptor-shell-v9';
+const CACHE = 'transcriptor-shell-v10';
 const SHELL = [
   './',
   'index.html',
@@ -34,5 +34,17 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return; // deja pasar CDN/modelos tal cual
-  e.respondWith(caches.match(e.request).then((cached) => cached || fetch(e.request)));
+  // Primero la red, para que cada versión publicada llegue de inmediato; la caché es el respaldo
+  // sin conexión y se refresca con cada respuesta buena.
+  e.respondWith(
+    fetch(e.request)
+      .then((respuesta) => {
+        if (respuesta.ok) {
+          const copia = respuesta.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copia)).catch(() => {});
+        }
+        return respuesta;
+      })
+      .catch(() => caches.match(e.request, { ignoreSearch: true }).then((cached) => cached || Response.error()))
+  );
 });
