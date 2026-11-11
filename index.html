@@ -99,6 +99,13 @@
   #log, #preview { font-family: var(--mono); font-size: .8125rem; background: var(--surface-2); border-radius: .6rem; padding: .7rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
   #log { height: 14rem; }
   #preview { max-height: 26rem; }
+  /* Fondo que reacciona al scroll dentro de la vista previa (solo transcripciones) */
+  .preview-wrap { position: relative; border-radius: .6rem; overflow: hidden; }
+  #previewBg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  #preview { position: relative; z-index: 1; background: color-mix(in srgb, var(--surface-2) 80%, transparent); }
+  #preview .pv-seg { opacity: .55; transition: opacity .35s ease; }
+  #preview .pv-seg.in-view { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { #preview .pv-seg { transition: none; } }
   .actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .6rem; }
   .qrgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.25rem; align-items: start; }
   #qrCanvas { background: #fff; border-radius: .6rem; border: 1px solid var(--border); width: 18.75rem; max-width: 100%; height: auto; }
@@ -254,7 +261,10 @@
 
     <div class="card">
       <h2>Vista previa <span class="muted" id="previewName"></span></h2>
-      <pre id="preview" class="muted">Haz clic en «ver» de un resultado para mostrarlo aquí.</pre>
+      <div class="preview-wrap">
+        <canvas id="previewBg" aria-hidden="true"></canvas>
+        <pre id="preview" class="muted">Haz clic en «ver» de un resultado para mostrarlo aquí.</pre>
+      </div>
     </div>
 
     <div class="card">

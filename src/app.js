@@ -93,6 +93,7 @@ function setMode(mode) {
   document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.mode === mode));
   $('#proc').classList.toggle('hidden', mode === 'qr');
   $('#qr').classList.toggle('hidden', mode !== 'qr');
+  resizeBg();
   if (mode === 'qr') { drawQr(); return; }
   $('#modeHelp').textContent = MODE_HELP[mode];
   document.querySelectorAll('[data-modes]').forEach((el) => el.classList.toggle('hidden', !el.dataset.modes.split(' ').includes(mode)));
@@ -139,7 +140,7 @@ function updateRow(it) {
     const a = e.target.closest('a'); if (!a) return;
     const o = it.outputs[+a.dataset.i];
     if (a.dataset.act === 'dl') downloadBlob(o.blob, o.name);
-    else { $('#previewName').textContent = '· ' + o.name; const p = $('#preview'); p.classList.remove('muted'); p.textContent = await o.blob.text(); }
+    else renderPreview(o.name, await o.blob.text(), o.segs);
   };
 }
 function downloadBlob(blob, name) {
@@ -434,20 +435,122 @@ const run = {
       const md = [`# Transcripción: ${b}`, '', `- **Archivo:** ${it.file.name}`, `- **Duración:** ${fmtTime(dur)}`,
         `- **Modelo:** ${o.model.split('/')[1]}`, `- **Fecha:** ${new Date().toLocaleString('es')}`, '', '---', '',
         ...segs.map((s) => `**[${fmtTime(s.t)}]** ${s.text}\n`)].join('\n');
-      outs.push({ name: b + '.md', blob: textBlob(md, 'text/markdown') });
+      outs.push({ name: b + '.md', blob: textBlob(md, 'text/markdown'), segs });
     }
-    if (o.audioTxt) outs.push({ name: b + '.txt', blob: textBlob(segs.map((s) => s.text).join(' ')) });
+    if (o.audioTxt) outs.push({ name: b + '.txt', blob: textBlob(segs.map((s) => s.text).join(' ')), segs });
     log(`   Longitud de la transcripción: ${segs.reduce((a, s) => a + s.text.length + 1, 0)} caracteres`);
     return outs;
   },
 };
 
 function showLive(it, segs) {
-  $('#previewName').textContent = '· ' + it.file.name + ' (en curso)';
+  renderPreview(it.file.name + ' (en curso)', '', segs);
+}
+
+// ---------- Vista previa con fondo que reacciona al scroll (solo transcripciones) ----------
+// Cada fragmento de la transcripción es un "capítulo": al desplazarse por el texto, el
+// fragmento visible activa una forma de fondo propia (posición de scroll → estado), en vez
+// de una animación continua. Respeta prefers-reduced-motion desactivando la transición.
+function renderPreview(name, text, segs) {
+  $('#previewName').textContent = '· ' + name;
   const p = $('#preview');
   p.classList.remove('muted');
-  p.textContent = segs.map((s) => `[${fmtTime(s.t)}] ${s.text}`).join('\n');
+  if (previewObserver) { previewObserver.disconnect(); previewObserver = null; }
+  activeSeg = -1;
+  if (segs && segs.length) {
+    p.innerHTML = segs.map((s, i) => `<div class="pv-seg" data-i="${i}">[${fmtTime(s.t)}] ${esc(s.text)}</div>`).join('');
+    observeSegments(p, segs.length);
+  } else {
+    p.textContent = text;
+    setBg(null);
+  }
+  resizeBg();
   p.scrollTop = p.scrollHeight;
+}
+let previewObserver = null;
+let activeSeg = -1;
+function observeSegments(container, count) {
+  const ratios = new Array(count).fill(0);
+  previewObserver = new IntersectionObserver((entries) => {
+    for (const e of entries) ratios[+e.target.dataset.i] = e.intersectionRatio;
+    let best = 0, bestVal = -1;
+    ratios.forEach((v, i) => { if (v > bestVal) { bestVal = v; best = i; } });
+    if (bestVal <= 0 || best === activeSeg) return;
+    activeSeg = best;
+    container.querySelectorAll('.pv-seg').forEach((el) => el.classList.toggle('in-view', +el.dataset.i === best));
+    setBg(blobParams(best));
+  }, { root: container, threshold: [0, .25, .5, .75, 1] });
+  container.querySelectorAll('.pv-seg').forEach((el) => previewObserver.observe(el));
+}
+
+const bgCanvas = $('#previewBg');
+const bgCtx = bgCanvas && bgCanvas.getContext('2d');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let bgW = 0, bgH = 0, bgCurrent = null, bgAnimFrame = null;
+function resizeBg() {
+  if (!bgCanvas) return;
+  const rect = bgCanvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  bgW = rect.width; bgH = rect.height;
+  bgCanvas.width = Math.max(1, Math.round(bgW * dpr));
+  bgCanvas.height = Math.max(1, Math.round(bgH * dpr));
+  bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (bgCurrent) paintBg(bgCurrent); else bgCtx.clearRect(0, 0, bgW, bgH);
+}
+window.addEventListener('resize', resizeBg);
+function seededRand(seed) {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6d2b79f5) | 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function blobParams(i) {
+  const rnd = seededRand(i * 97 + 13);
+  const n = 6 + Math.floor(rnd() * 3);
+  return { pts: Array.from({ length: n }, () => .6 + rnd() * .4), rot: rnd() * Math.PI * 2, scale: .7 + rnd() * .3 };
+}
+function lerpBlob(a, b, t) {
+  const n = Math.max(a.pts.length, b.pts.length);
+  return {
+    pts: Array.from({ length: n }, (_, i) => a.pts[i % a.pts.length] + (b.pts[i % b.pts.length] - a.pts[i % a.pts.length]) * t),
+    rot: a.rot + (b.rot - a.rot) * t,
+    scale: a.scale + (b.scale - a.scale) * t,
+  };
+}
+function paintBg(p) {
+  if (!bgCtx) return;
+  bgCtx.clearRect(0, 0, bgW, bgH);
+  const cx = bgW / 2, cy = bgH / 2, R = Math.min(bgW, bgH) * .45 * p.scale;
+  bgCtx.save();
+  bgCtx.translate(cx, cy);
+  bgCtx.rotate(p.rot);
+  bgCtx.beginPath();
+  const n = p.pts.length;
+  for (let k = 0; k <= n; k++) {
+    const a = (k / n) * Math.PI * 2, r = R * p.pts[k % n];
+    const x = Math.cos(a) * r, y = Math.sin(a) * r;
+    if (k === 0) bgCtx.moveTo(x, y); else bgCtx.lineTo(x, y);
+  }
+  bgCtx.closePath();
+  bgCtx.fillStyle = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#0f766e').trim();
+  bgCtx.globalAlpha = .16;
+  bgCtx.fill();
+  bgCtx.restore();
+}
+function setBg(target) {
+  if (bgAnimFrame) { cancelAnimationFrame(bgAnimFrame); bgAnimFrame = null; }
+  if (!target || reducedMotion || !bgCurrent) { bgCurrent = target; if (target) paintBg(target); else bgCtx && bgCtx.clearRect(0, 0, bgW, bgH); return; }
+  const from = bgCurrent, t0 = performance.now(), dur = 450;
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / dur), eased = 1 - (1 - t) ** 3;
+    bgCurrent = lerpBlob(from, target, eased);
+    paintBg(bgCurrent);
+    bgAnimFrame = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  bgAnimFrame = requestAnimationFrame(step);
 }
 function rms(a) { let s = 0; for (let i = 0; i < a.length; i += 4) s += a[i] * a[i]; return Math.sqrt(s / (a.length / 4)); }
 async function decodeAudio(file) {
@@ -580,7 +683,7 @@ $('#btnRun').onclick = async () => {
       }
       it.status = 'done'; ok++;
       const firstText = outs.find((x) => /\.(md|txt)$/.test(x.name));
-      if (firstText) { $('#previewName').textContent = '· ' + firstText.name; $('#preview').textContent = await firstText.blob.text(); }
+      if (firstText) renderPreview(firstText.name, await firstText.blob.text(), firstText.segs);
     } catch (e) {
       if (e === CANCEL) { it.status = 'pending'; log('  ⏹ Detenido'); }
       else { it.status = 'error'; it.error = e.message || String(e); bad++; log(`  ❌ Error: ${it.error}`); console.error(e); }

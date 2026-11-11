@@ -18,6 +18,7 @@ Este repositorio es una copia corregida de [adfincarserv-source/transcripcion](h
 
 - Acepta **archivos sueltos o carpetas completas** (con subcarpetas). En Chrome o Edge los resultados se guardan directamente en una subcarpeta de la carpeta elegida; en otros navegadores se descargan individualmente o en un ZIP.
 - Diseño adaptable a celulares, tabletas y portátiles; tema claro, oscuro o automático y tamaño de letra ajustable (se recuerdan entre sesiones).
+- En las transcripciones de audio, la vista previa tiene un **fondo que reacciona al scroll** — ver [Fondo interactivo de la vista previa](#fondo-interactivo-de-la-vista-previa).
 
 ## Instalación y uso
 
@@ -77,6 +78,14 @@ Luego elige una carpeta o archivos, ajusta las opciones y pulsa **Procesar**.
 | --- | --- | --- |
 | Idioma del OCR | Español, Español + Inglés, Inglés, Portugués | Español + Inglés |
 | Calidad del OCR | Normal, Alta, Muy alta | Alta |
+
+## Fondo interactivo de la vista previa
+
+En la pestaña 🎙️ Audio y video, la vista previa trata cada fragmento de 30 s de la transcripción como un **capítulo**: al desplazarte por el texto, el fragmento que queda a la vista activa su propia forma de fondo (un blob geométrico, generado a partir de ese fragmento, en el color de acento de la app), con una transición suave hacia la nueva forma — es la misma idea de "capítulos disparados por la posición de scroll" que páginas de *scrollytelling* como [StoryScroll](https://github.com/xxlh/StoryScroll), implementada aquí con Canvas 2D nativo (sin sumar una librería de animación) para no aumentar el peso de la app instalable.
+
+- Se detecta con un `IntersectionObserver` sobre el contenedor de la vista previa — no hay una animación corriendo de fondo todo el tiempo, solo se redibuja al cambiar de fragmento activo.
+- Si el sistema tiene activado "reducir movimiento" (`prefers-reduced-motion`), el fondo sigue reaccionando al fragmento activo, pero sin la transición animada: cambia de forma al instante.
+- Solo aplica a la vista previa de una **transcripción de audio** (tiene fragmentos con marca de tiempo); al previsualizar un Markdown u OCR, que es texto plano sin fragmentos, el fondo se desactiva.
 
 ## Estructura del proyecto
 
