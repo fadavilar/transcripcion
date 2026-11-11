@@ -804,6 +804,13 @@ function iniciarInstalacion() {
   const inicio = $('#instalarInicio');
   if (!inicio) return;
   const sistema = plataformaInstalar(navigator.userAgent, navigator.maxTouchPoints);
+  // Enlace para compartir (…?instalar): dirige directo al botón de instalar, resaltado y listo
+  // para tocar. No existe forma de abrir el diálogo nativo sin que la persona toque algo (los
+  // navegadores lo exigen), así que esto deja todo a un solo toque en vez de tener que buscar
+  // el aviso o el menú del navegador. Si el navegador todavía no decide si puede instalarse
+  // (beforeinstallprompt no ha llegado), se vuelve a intentar cuando llegue.
+  let quiereInstalar = new URLSearchParams(location.search).has('instalar');
+  if (quiereInstalar) history.replaceState(null, '', location.pathname + location.hash);
   let aviso = null;
   let instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const pintar = () => {
@@ -812,10 +819,21 @@ function iniciarInstalacion() {
     inicio.querySelectorAll('[data-instalar-texto]').forEach((p) => { p.textContent = texto; });
     inicio.querySelectorAll('[data-instalar]').forEach((b) => { b.hidden = !aviso; });
   };
+  const aplicarIntento = () => {
+    if (!quiereInstalar || instalada || inicio.hidden) return;
+    const boton = inicio.querySelector('[data-instalar]');
+    const listo = boton && !boton.hidden; // ya se puede tocar para instalar
+    if (!listo && sistema === 'android') return; // esperar a que llegue beforeinstallprompt
+    quiereInstalar = false;
+    inicio.classList.add('resaltar');
+    inicio.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+    if (listo) boton.focus();
+  };
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault(); // se guarda para mostrarlo cuando la persona toque el botón
     aviso = e;
     pintar();
+    aplicarIntento();
   });
   window.addEventListener('appinstalled', () => {
     aviso = null;
@@ -833,5 +851,6 @@ function iniciarInstalacion() {
     });
   });
   pintar();
+  aplicarIntento();
 }
 iniciarInstalacion();

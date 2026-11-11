@@ -36,6 +36,8 @@ Al abrir **https://fadavilar.github.io/transcripcion/**, arriba de la página ap
 
 Queda como una app aparte, con su propio ícono (el micrófono 🎙️ sobre fondo verde azulado) y sin la barra del navegador — se abre y se ve igual que cualquier otra app del celular, pero sigue siendo 100% local: nada se sube a internet.
 
+**Enlace directo para compartir:** https://fadavilar.github.io/transcripcion/?instalar — al abrirlo, la página baja directo al aviso de instalación y lo resalta, con el botón listo para tocar (en Android/computador). Ningún navegador permite abrir el diálogo de instalación sin que la persona toque algo, así que en iPhone ese enlace resalta igual el aviso, pero con los pasos manuales en vez de un botón.
+
 ### Sin conexión a GitHub
 
 No requiere instalación ni `npm install`: es HTML + JavaScript puro, sin paso de compilación.

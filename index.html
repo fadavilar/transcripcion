@@ -58,6 +58,9 @@
   .instalar-texto { flex: 1 1 200px; min-width: 0; }
   .instalar-texto strong { display: block; }
   .instalar-texto p { margin: .2rem 0 0; }
+  .instalar.resaltar { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); animation: instalar-pulso 1.6s ease-in-out 2; }
+  @keyframes instalar-pulso { 0%, 100% { box-shadow: 0 0 0 3px var(--accent-soft); } 50% { box-shadow: 0 0 0 6px var(--accent-soft); } }
+  @media (prefers-reduced-motion: reduce) { .instalar.resaltar { animation: none; } }
   .sub { color: var(--muted); margin: .25rem 0 0; font-size: .875rem; }
   .small { font-size: .8125rem; }
   /* Barra de preferencias: tema y tamaño de letra */
