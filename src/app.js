@@ -796,6 +796,7 @@ const INSTALAR_TEXTOS = {
   ios: 'Toca Compartir en el navegador y luego «Agregar a inicio». Queda con su ícono, junto a tus otras apps.',
   android: 'Toca el menú ⋮ del navegador y elige «Instalar aplicación». Queda con su ícono, junto a tus otras apps.',
   otro: 'Usa el ícono de instalar de la barra de direcciones. En el celular queda en la pantalla de inicio con su ícono.',
+  instalada: 'Ya está instalada en este equipo. Ábrela desde tu pantalla de inicio o con «Abrir en la app» en la barra de direcciones.',
 };
 function plataformaInstalar(ua, puntosTactiles = 0) {
   if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && puntosTactiles > 1)) return 'ios';
@@ -815,10 +816,15 @@ function iniciarInstalacion() {
   if (quiereInstalar) history.replaceState(null, '', location.pathname + location.hash);
   let aviso = null;
   let instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  // Si ya está instalada, el navegador no vuelve a ofrecer instalarla: se dice, en vez de mostrar
+  // un aviso que no puede hacer nada. Requiere related_applications en el manifest.
+  let yaEnEquipo = false;
   const icono = inicio.querySelector('[data-instalar-icono]');
   const pintar = () => {
-    inicio.hidden = instalada || !(aviso || sistema !== 'otro');
-    const texto = INSTALAR_TEXTOS[aviso ? 'boton' : sistema];
+    inicio.hidden = instalada || !(aviso || yaEnEquipo || sistema !== 'otro');
+    const texto = INSTALAR_TEXTOS[aviso ? 'boton' : yaEnEquipo ? 'instalada' : sistema];
+    const titulo = inicio.querySelector('[data-instalar-titulo]');
+    if (titulo) titulo.textContent = yaEnEquipo && !aviso ? 'Ya la tienes instalada' : sistema === 'otro' ? 'Instálala como app' : 'Instálala en tu celular';
     inicio.querySelectorAll('[data-instalar-texto]').forEach((p) => { p.textContent = texto; });
     inicio.querySelectorAll('[data-instalar]').forEach((b) => { b.hidden = !aviso; });
     // El ícono también instala al tocarlo, no solo el botón de texto.
@@ -863,6 +869,14 @@ function iniciarInstalacion() {
     icono.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); disparar(); }
     });
+  }
+  if (navigator.getInstalledRelatedApps) {
+    navigator.getInstalledRelatedApps().then((apps) => {
+      if (apps.length && !aviso) {
+        yaEnEquipo = true;
+        pintar();
+      }
+    }).catch(() => {});
   }
   pintar();
   aplicarIntento();
