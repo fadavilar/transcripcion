@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transcriptor Local</title>
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Transcriptor">
+<meta name="mobile-web-app-capable" content="yes">
+<script>
+  // Preferencias guardadas (tema y tamaño de letra) aplicadas antes de pintar la página
+  (function () {
+    try {
+      var t = localStorage.getItem('tl-theme'), f = +localStorage.getItem('tl-font');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      if (f >= 75 && f <= 150) document.documentElement.style.fontSize = (16 * f / 100) + 'px';
+    } catch (e) {}
+  })();
+</script>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --text: #1b1f24; --muted: #5f6b7a;
+    --border: #dde2e8; --accent: #0f766e; --accent-ink: #ffffff; --accent-soft: #e2f3f1;
+    --ok: #15803d; --err: #b91c1c; --warn: #b45309; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111418; --surface: #1a1e24; --surface-2: #222830; --text: #e7eaee; --muted: #9aa5b1;
+      --border: #2e353f; --accent: #2bb3a5; --accent-ink: #06201d; --accent-soft: #163a37;
+      --ok: #4ade80; --err: #f87171; --warn: #fbbf24;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111418; --surface: #1a1e24; --surface-2: #222830; --text: #e7eaee; --muted: #9aa5b1;
+    --border: #2e353f; --accent: #2bb3a5; --accent-ink: #06201d; --accent-soft: #163a37;
+    --ok: #4ade80; --err: #f87171; --warn: #fbbf24;
+  }
+  :root { color-scheme: light dark; --tap: 44px; --radius: .75rem; }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 1rem/1.55 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 1.25rem max(16px, env(safe-area-inset-right)) 3rem max(16px, env(safe-area-inset-left)); }
+  header { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .75rem 1rem; justify-content: space-between; margin-bottom: 1rem; }
+  h1 { font-size: 1.5rem; line-height: 1.2; margin: 0; }
+  .badge { display: inline-block; font-size: .75rem; padding: .2rem .65rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; margin-top: .4rem; }
+  .sub { color: var(--muted); margin: .25rem 0 0; font-size: .875rem; }
+  .small { font-size: .8125rem; }
+  /* Barra de preferencias: tema y tamaño de letra */
+  .prefs { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: .6rem; overflow: hidden; background: var(--surface); }
+  .seg button { min-width: var(--tap); min-height: var(--tap); padding: 0 .7rem; border: 0; background: transparent; color: var(--text); font: inherit; font-size: .875rem; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--border); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .seg output { display: grid; place-items: center; min-width: 3.2rem; font-size: .8125rem; color: var(--muted); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  /* Pestañas: una fila desplazable en móvil */
+  .tabs { display: flex; gap: .4rem; margin: 0 -16px 1rem; padding: 0 16px .25rem; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; }
+  .tab { flex: 0 0 auto; scroll-snap-align: start; min-height: var(--tap); border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 0 1rem; border-radius: .6rem; cursor: pointer; font: inherit; white-space: nowrap; }
+  .tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: .9rem; }
+  .card h2 { font-size: 1.0625rem; margin: 0 0 .6rem; }
+  .help { color: var(--muted); font-size: .875rem; margin: 0 0 .75rem; }
+  .row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+  button.btn { min-height: var(--tap); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 0 1rem; border-radius: .6rem; cursor: pointer; font: inherit; }
+  button.btn:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .drop { margin-top: .75rem; border: 2px dashed var(--border); border-radius: .6rem; padding: 1.1rem; text-align: center; color: var(--muted); font-size: .875rem; }
+  .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); gap: .9rem 1.25rem; }
+  .opts label.f { display: flex; flex-direction: column; gap: .3rem; font-size: .875rem; color: var(--muted); }
+  .grouplabel { color: var(--muted); font-size: .875rem; margin-bottom: .2rem; }
+  select, input[type="text"], input[type="number"], textarea { min-height: var(--tap); font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: .6rem; padding: .45rem .65rem; width: 100%; }
+  .chk { display: flex; gap: .6rem; align-items: flex-start; font-size: .9375rem; padding: .35rem 0; cursor: pointer; }
+  .chk input { width: 1.15rem; height: 1.15rem; margin: .2rem 0 0; flex: none; accent-color: var(--accent); }
+  .hidden { display: none !important; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--surface); }
+  td.name { word-break: break-word; overflow-wrap: anywhere; }
+  .muted { color: var(--muted); }
+  .st-done { color: var(--ok); } .st-error { color: var(--err); } .st-working { color: var(--accent); } .st-skip { color: var(--muted); }
+  .tablewrap { max-height: 24rem; overflow: auto; }
+  .links { display: flex; flex-wrap: wrap; gap: .1rem .5rem; }
+  .links a { display: inline-flex; align-items: center; min-height: 2rem; color: var(--accent); cursor: pointer; text-decoration: underline; overflow-wrap: anywhere; }
+  .bar { height: .4rem; background: var(--surface-2); border-radius: 99px; overflow: hidden; margin-top: .5rem; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  #status { font-size: .875rem; margin-top: .4rem; min-height: 1.4em; }
+  #log, #preview { font-family: var(--mono); font-size: .8125rem; background: var(--surface-2); border-radius: .6rem; padding: .7rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+  #log { height: 14rem; }
+  #preview { max-height: 26rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .6rem; }
+  .qrgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.25rem; align-items: start; }
+  #qrCanvas { background: #fff; border-radius: .6rem; border: 1px solid var(--border); width: 18.75rem; max-width: 100%; height: auto; }
+  footer { font-size: .8125rem; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+  /* Móvil y tabletas pequeñas */
+  @media (max-width: 720px) {
+    .wrap { padding-top: .9rem; }
+    h1 { font-size: 1.3rem; }
+    .prefs { width: 100%; justify-content: space-between; }
+    .qrgrid { grid-template-columns: 1fr; justify-items: center; }
+    .qrgrid > .opts { width: 100%; }
+    .row > button.btn { flex: 1 1 auto; }
+    .card { padding: .9rem; }
+    /* Barra de acciones fija abajo, al alcance del pulgar */
+    .actions { position: sticky; bottom: 0; z-index: 2; margin: 0 -.9rem .6rem; padding: .6rem .9rem calc(.6rem + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--border); }
+    .actions button { flex: 1 1 0; }
+    /* La tabla se vuelve una lista de tarjetas */
+    .tablewrap { max-height: none; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    thead { display: none; }
+    tr { padding: .6rem 0; border-bottom: 1px solid var(--border); }
+    td { border: 0; padding: .1rem 0; }
+    td.hide-sm { display: inline; width: auto; color: var(--muted); font-size: .8125rem; }
+    td.hide-sm + td.hide-sm::before { content: " · "; }
+  }
+  /* Pantallas táctiles: objetivos más grandes */
+  @media (pointer: coarse) { :root { --tap: 48px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Transcriptor Local</h1>
+      <p class="sub">Markdown · OCR de PDF · Transcripción de audio/video · QR — todo se procesa en este dispositivo.</p>
+      <span class="badge" title="Los archivos nunca se suben. Solo se descargan una vez las librerías y modelos.">🔒 100 % local</span>
+    </div>
+    <div class="prefs">
+      <div class="seg" role="group" aria-label="Tema">
+        <button data-theme-set="auto" aria-pressed="true" title="Seguir el sistema">Auto</button>
+        <button data-theme-set="light" aria-pressed="false" title="Tema claro">☀️</button>
+        <button data-theme-set="dark" aria-pressed="false" title="Tema oscuro">🌙</button>
+      </div>
+      <div class="seg" role="group" aria-label="Tamaño de letra">
+        <button id="fsDown" title="Reducir letra" aria-label="Reducir tamaño de letra">A−</button>
+        <output id="fsVal" aria-live="polite">100 %</output>
+        <button id="fsUp" title="Aumentar letra" aria-label="Aumentar tamaño de letra">A+</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-mode="auto" aria-selected="true">⚡ Automático</button>
+    <button class="tab" role="tab" data-mode="md" aria-selected="false">📝 A Markdown</button>
+    <button class="tab" role="tab" data-mode="ocr" aria-selected="false">🔍 OCR de PDF</button>
+    <button class="tab" role="tab" data-mode="audio" aria-selected="false">🎙️ Audio y video</button>
+    <button class="tab" role="tab" data-mode="qr" aria-selected="false">▦ Generador QR</button>
+  </nav>
+
+  <!-- ================== PROCESADOR DE ARCHIVOS ================== -->
+  <section id="proc">
+    <div class="card">
+      <h2>1 · Origen</h2>
+      <p class="help" id="modeHelp"></p>
+      <div class="row">
+        <button class="btn primary" id="btnFolder">📁 Elegir carpeta</button>
+        <button class="btn" id="btnFiles">📄 Elegir archivos</button>
+        <label class="chk"><input type="checkbox" id="optRecursive" checked> Incluir subcarpetas</label>
+        <button class="btn" id="btnClear">Limpiar lista</button>
+      </div>
+      <input type="file" id="inFiles" multiple hidden>
+      <input type="file" id="inDir" webkitdirectory multiple hidden>
+      <div class="drop" id="drop">…o arrastra aquí archivos o una carpeta</div>
+    </div>
+
+    <div class="card">
+      <h2>2 · Opciones</h2>
+      <div class="opts">
+        <label class="f" data-modes="auto md ocr">Idioma del OCR
+          <select id="optOcrLang">
+            <option value="spa">Español</option>
+            <option value="spa+eng" selected>Español + Inglés</option>
+            <option value="eng">Inglés</option>
+            <option value="por">Portugués</option>
+          </select>
+        </label>
+        <label class="f" data-modes="auto md ocr">Calidad del OCR
+          <select id="optScale">
+            <option value="2">Normal (rápido)</option>
+            <option value="3" selected>Alta</option>
+            <option value="4">Muy alta (lento)</option>
+          </select>
+        </label>
+        <label class="chk" data-modes="auto md"><input type="checkbox" id="optOcrFallback" checked> Aplicar OCR a las páginas de PDF que no tengan texto (escaneadas)</label>
+        <div data-modes="ocr">
+          <div class="grouplabel">Archivos a generar</div>
+          <label class="chk"><input type="checkbox" id="optOcrPdf" checked> PDF con texto buscable</label>
+          <label class="chk"><input type="checkbox" id="optOcrTxt" checked> Texto (.txt)</label>
+          <label class="chk"><input type="checkbox" id="optOcrMd"> Markdown (.md)</label>
+        </div>
+        <label class="f" data-modes="auto audio">Modelo de transcripción (Whisper)
+          <select id="optModel">
+            <option value="onnx-community/whisper-tiny">Tiny · ~75 MB · muy rápido, menos preciso</option>
+            <option value="onnx-community/whisper-base" selected>Base · ~150 MB · equilibrado</option>
+            <option value="onnx-community/whisper-small">Small · ~500 MB · más preciso</option>
+            <option value="onnx-community/whisper-large-v3-turbo">Large v3 Turbo · ~1 GB · requiere GPU</option>
+          </select>
+        </label>
+        <label class="f" data-modes="auto audio">Idioma del audio
+          <select id="optLang">
+            <option value="spanish" selected>Español</option>
+            <option value="english">Inglés</option>
+            <option value="portuguese">Portugués</option>
+            <option value="">Detectar automáticamente</option>
+          </select>
+        </label>
+        <label class="f" data-modes="auto audio">Procesador
+          <select id="optDevice">
+            <option value="webgpu">Tarjeta gráfica (WebGPU)</option>
+            <option value="wasm">CPU</option>
+          </select>
+        </label>
+        <div data-modes="auto audio">
+          <div class="grouplabel">Salida de la transcripción</div>
+          <label class="chk"><input type="checkbox" id="optAudioMd" checked> Markdown con marcas de tiempo (.md)</label>
+          <label class="chk"><input type="checkbox" id="optAudioTxt" checked> Texto plano (.txt)</label>
+        </div>
+        <div>
+          <div class="grouplabel">Dónde guardar</div>
+          <label class="chk"><input type="radio" name="dest" value="folder" id="destFolder" checked> <span>En una subcarpeta de la carpeta elegida <span class="muted">(MarkitDown · OCR · Transcripciones)</span></span></label>
+          <label class="chk"><input type="radio" name="dest" value="download"> <span>Solo en esta página (descargar luego, individual o ZIP)</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3 · Archivos <span class="muted" id="count"></span></h2>
+      <div class="actions">
+        <button class="btn primary" id="btnRun" disabled>▶ Procesar</button>
+        <button class="btn" id="btnStop" disabled>■ Detener</button>
+        <button class="btn" id="btnZip" disabled>⬇ ZIP</button>
+      </div>
+      <div class="bar"><div id="barFill"></div></div>
+      <div id="status" class="muted">Agrega archivos o una carpeta para empezar.</div>
+      <div class="tablewrap" style="margin-top:10px">
+        <table>
+          <thead><tr><th>Archivo</th><th class="hide-sm">Tipo</th><th class="hide-sm">Tamaño</th><th>Estado</th><th>Resultado</th></tr></thead>
+          <tbody id="list"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Vista previa <span class="muted" id="previewName"></span></h2>
+      <pre id="preview" class="muted">Haz clic en «ver» de un resultado para mostrarlo aquí.</pre>
+    </div>
+
+    <div class="card">
+      <h2>Registro</h2>
+      <pre id="log"></pre>
+    </div>
+  </section>
+
+  <!-- ================== GENERADOR QR ================== -->
+  <section id="qr" class="hidden">
+    <div class="card">
+      <h2>Generador de códigos QR</h2>
+      <p class="help">Escribe un enlace o texto. El código se genera en tu navegador.</p>
+      <div class="qrgrid">
+        <div class="opts" style="grid-template-columns:1fr">
+          <label class="f">Enlace o texto
+            <textarea id="qrText" rows="3">https://www.linkedin.com/in/drfabian/</textarea>
+          </label>
+          <div class="opts">
+            <label class="f">Tamaño (px)
+              <input type="number" id="qrSize" value="512" min="128" max="2048" step="64">
+            </label>
+            <label class="f">Corrección de errores
+              <select id="qrEcc">
+                <option value="L">Baja (7 %)</option>
+                <option value="M" selected>Media (15 %)</option>
+                <option value="Q">Alta (25 %)</option>
+                <option value="H">Máxima (30 %)</option>
+              </select>
+            </label>
+            <label class="f">Color
+              <input type="text" id="qrColor" value="#000000">
+            </label>
+            <label class="f">Nombre del archivo
+              <input type="text" id="qrName" value="codigo_qr">
+            </label>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="qrPng">⬇ Descargar PNG</button>
+            <button class="btn" id="qrSvg">⬇ Descargar SVG</button>
+          </div>
+          <div id="qrMsg" class="muted small" aria-live="polite"></div>
+        </div>
+        <canvas id="qrCanvas" width="256" height="256"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <footer><p>La primera vez se descargan las librerías y los modelos (OCR y Whisper) y quedan guardados en el navegador; después funciona con tus archivos sin enviarlos a ningún servidor. Para guardar directamente en tus carpetas usa Chrome o Edge en un computador.</p></footer>
+</div>
+
+<!-- Código del worker de transcripción (Whisper vía transformers.js, se ejecuta en tu equipo) -->
+<script type="text/worker" id="asrWorkerSrc">
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1';
+env.allowLocalModels = false;
+let asr = null, key = '';
+self.onmessage = async (e) => {
+  const m = e.data;
+  try {
+    if (m.type === 'load') {
+      const k = m.model + '|' + m.device;
+      if (k !== key) {
+        if (asr) { try { await asr.dispose(); } catch {} asr = null; key = ''; }
+        asr = await pipeline('automatic-speech-recognition', m.model, {
+          device: m.device,
+          dtype: m.device === 'webgpu' ? { encoder_model: 'fp32', decoder_model_merged: 'q4' } : 'q8',
+          progress_callback: (p) => self.postMessage({ type: 'dl', p }),
+        });
+        key = k;
+      }
+      self.postMessage({ type: 'ok', id: m.id });
+    } else if (m.type === 'run') {
+      const opts = { task: 'transcribe' };
+      if (m.language) opts.language = m.language;
+      const out = await asr(m.audio, opts);
+      self.postMessage({ type: 'ok', id: m.id, text: out.text });
+    }
+  } catch (err) {
+    self.postMessage({ type: 'error', id: m.id, error: String((err && err.message) || err) });
+  }
+};
+</script>
+
+<script src="src/app.js"></script>
+</body>
+</html>
