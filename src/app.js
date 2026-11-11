@@ -419,8 +419,10 @@ const run = {
         try {
           // El motor pudo haberse caído (memoria insuficiente tras muchos fragmentos):
           // recargar el modelo y reintentar este fragmento una vez antes de darlo por perdido.
+          // asr.run() transfiere (no copia) el buffer de audio al worker, así que `chunk` queda
+          // inutilizable (detached) tras el primer intento: hay que volver a recortarlo de `pcm`.
           await asr.load(o.model, o.device, prog);
-          text = (await asr.run(chunk, o.language)).trim();
+          text = (await asr.run(pcm.slice(i * CH, (i + 1) * CH), o.language)).trim();
         } catch (e2) {
           log(`   ⚠️ Fragmento ${i + 1} no se pudo recuperar tras recargar el modelo: ${e2.message}`);
           text = '[Error en transcripción]';
