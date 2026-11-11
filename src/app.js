@@ -788,16 +788,24 @@ setMode('auto');
 window.app = { state, run, addFile, renderList, readOpts };
 
 // ---------- Instalar como app: banner con botón, además del menú del navegador ----------
-// El botón nunca queda mudo. Si el navegador ofrece instalar (beforeinstallprompt, Chrome y Edge),
-// abre su diálogo. Si no lo ofrece (iOS, Firefox, una app ya instalada o un aviso descartado antes)
-// o el diálogo falla, muestra los pasos exactos del menú de ese navegador, que sí funcionan siempre.
+// El botón y el ícono están siempre a la vista (en el aviso y en el encabezado) y nunca quedan
+// mudos. Si el navegador ofrece instalar (beforeinstallprompt, Chrome y Edge), abren su diálogo.
+// Si no (iPhone, Firefox, una app ya instalada o un aviso descartado antes) o el diálogo falla,
+// muestran los pasos del menú de ese navegador. En iPhone no existe otra vía: los pasos se ven
+// desde el principio.
 const INSTALAR_TEXTOS = {
   oferta: 'Queda en tu pantalla de inicio con su propio ícono, sin pasar por una tienda de apps.',
   inicio: 'Queda con su propio ícono, junto a tus otras apps, sin pasar por una tienda de apps.',
   instalada: 'Ya está instalada en este equipo. Ábrela desde tu pantalla de inicio o con «Abrir en la app» en la barra de direcciones.',
+  ios: 'En iPhone y iPad se instala desde el menú Compartir, en cuatro pasos:',
 };
 const INSTALAR_PASOS = {
-  ios: 'En Safari, toca Compartir (el cuadro con la flecha hacia arriba) y luego «Agregar a inicio».',
+  ios: [
+    'Abre esta página en Safari. En Chrome o Edge del iPhone también funciona, desde su propio botón Compartir.',
+    'Toca Compartir: el cuadro con una flecha hacia arriba, en la barra de abajo (en el iPad, arriba). Si no lo ves, toca primero el botón ⋯.',
+    'Desliza la lista hacia abajo y toca «Agregar a inicio» (puede decir «Añadir a pantalla de inicio»). Si no aparece, toca «Editar acciones» y actívala.',
+    'Toca «Agregar». El ícono del Transcriptor queda en tu pantalla de inicio y se abre como una app.',
+  ],
   'android-samsung': 'Toca el menú ☰ y luego «Añadir página a» → «Pantalla de inicio».',
   'android-firefox': 'Toca el menú ⋮ y luego «Agregar a la pantalla de inicio».',
   android: 'Toca el menú ⋮ del navegador y elige «Instalar aplicación» o «Agregar a la pantalla principal».',
@@ -829,27 +837,39 @@ function iniciarInstalacion() {
   let quiereInstalar = new URLSearchParams(location.search).has('instalar');
   if (quiereInstalar) history.replaceState(null, '', location.pathname + location.hash);
   let aviso = null;
+  // Dentro de la app ya instalada no tiene sentido ofrecer instalarla.
   let instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  // Si ya está instalada, el navegador no vuelve a ofrecer instalarla: se dice (requiere
-  // related_applications en el manifest y un navegador que lo informe).
+  // Si ya está instalada en el equipo, el navegador no vuelve a ofrecer instalarla: se dice
+  // (requiere related_applications en el manifest y un navegador que lo informe).
   let yaEnEquipo = false;
-  let pasos = false;
+  let pasos = sistema === 'ios';
   const icono = inicio.querySelector('[data-instalar-icono]');
   const boton = inicio.querySelector('[data-instalar]');
+  const lista = inicio.querySelector('[data-instalar-pasos]');
+  const arriba = $('#instalarArriba');
   const pintar = () => {
     inicio.hidden = instalada;
+    if (arriba) arriba.closest('[data-instalar-arriba]').hidden = instalada;
     const titulo = inicio.querySelector('[data-instalar-titulo]');
     if (titulo) titulo.textContent = yaEnEquipo && !aviso ? 'Ya la tienes instalada' : movil ? 'Instálala en tu celular' : 'Instálala como app';
+    const guia = pasos && !aviso ? INSTALAR_PASOS[sistema] : null;
     const texto = yaEnEquipo && !aviso ? INSTALAR_TEXTOS.instalada
-      : pasos ? INSTALAR_PASOS[sistema]
-        : aviso ? INSTALAR_TEXTOS.oferta : INSTALAR_TEXTOS.inicio;
+      : Array.isArray(guia) ? INSTALAR_TEXTOS[sistema]
+        : guia || (aviso ? INSTALAR_TEXTOS.oferta : INSTALAR_TEXTOS.inicio);
     inicio.querySelectorAll('[data-instalar-texto]').forEach((p) => { p.textContent = texto; });
-    if (boton) boton.hidden = (yaEnEquipo && !aviso) || (pasos && !aviso);
+    if (lista) {
+      lista.hidden = !Array.isArray(guia) || (yaEnEquipo && !aviso);
+      lista.replaceChildren(...(Array.isArray(guia) ? guia : []).map((paso) => {
+        const li = document.createElement('li');
+        li.textContent = paso;
+        return li;
+      }));
+    }
+    if (boton) boton.hidden = false; // siempre a la vista: si no puede abrir el diálogo, muestra los pasos
     if (icono) {
-      const activo = boton && !boton.hidden;
-      icono.setAttribute('role', activo ? 'button' : 'presentation');
-      icono.tabIndex = activo ? 0 : -1;
-      if (activo) icono.setAttribute('aria-label', 'Instalar app'); else icono.removeAttribute('aria-label');
+      icono.setAttribute('role', 'button');
+      icono.tabIndex = 0;
+      icono.setAttribute('aria-label', 'Instalar app');
     }
   };
   const mostrarPasos = () => {
@@ -858,6 +878,7 @@ function iniciarInstalacion() {
     inicio.classList.remove('resaltar');
     void inicio.offsetWidth; // reinicia la animación para que se note el cambio
     inicio.classList.add('resaltar');
+    inicio.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
   };
   const instalar = async () => {
     if (!aviso) {
@@ -880,7 +901,7 @@ function iniciarInstalacion() {
     quiereInstalar = false;
     inicio.classList.add('resaltar');
     inicio.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
-    if (boton && !boton.hidden) boton.focus();
+    if (boton) boton.focus();
   };
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault(); // se guarda para mostrarlo cuando la persona toque el botón
@@ -894,10 +915,11 @@ function iniciarInstalacion() {
     pintar();
   });
   if (boton) boton.addEventListener('click', instalar);
+  if (arriba) arriba.addEventListener('click', instalar);
   if (icono) {
-    icono.addEventListener('click', () => { if (icono.getAttribute('role') === 'button') instalar(); });
+    icono.addEventListener('click', instalar);
     icono.addEventListener('keydown', (e) => {
-      if ((e.key === 'Enter' || e.key === ' ') && icono.getAttribute('role') === 'button') { e.preventDefault(); instalar(); }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); instalar(); }
     });
   }
   if (navigator.getInstalledRelatedApps) {

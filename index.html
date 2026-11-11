@@ -59,6 +59,8 @@
   .instalar-texto { flex: 1 1 200px; min-width: 0; }
   .instalar-texto strong { display: block; }
   .instalar-texto p { margin: .2rem 0 0; }
+  .instalar-pasos { margin: .45rem 0 0; padding-left: 1.3rem; }
+  .instalar-pasos li { margin: .2rem 0; }
   .instalar img[role="button"] { cursor: pointer; }
   .instalar img[role="button"]:active { transform: scale(.96); }
   .instalar.resaltar { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); animation: instalar-pulso 1.6s ease-in-out 2; }
@@ -156,6 +158,9 @@
       <span class="badge" title="Los archivos nunca se suben. Solo se descargan una vez las librerías y modelos.">🔒 100 % local</span>
     </div>
     <div class="prefs">
+      <div class="seg" data-instalar-arriba hidden>
+        <button type="button" id="instalarArriba" title="Instalar como app" aria-label="Instalar como app">📲 Instalar</button>
+      </div>
       <div class="seg" role="group" aria-label="Tema">
         <button data-theme-set="auto" aria-pressed="true" title="Seguir el sistema">Auto</button>
         <button data-theme-set="light" aria-pressed="false" title="Tema claro">☀️</button>
@@ -174,8 +179,9 @@
     <div class="instalar-texto">
       <strong data-instalar-titulo>Instálala en tu celular</strong>
       <p class="muted small" data-instalar-texto></p>
+      <ol class="instalar-pasos small" data-instalar-pasos hidden></ol>
     </div>
-    <button type="button" class="btn primary" data-instalar hidden>📲 Instalar app</button>
+    <button type="button" class="btn primary" data-instalar>📲 Instalar app</button>
   </div>
 
   <nav class="tabs" role="tablist">
