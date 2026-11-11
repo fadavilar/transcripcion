@@ -4,7 +4,7 @@
 // modelos de Whisper NO se cachean aquí: cada una ya gestiona su propia caché
 // (p. ej. transformers.js guarda los modelos en el Cache Storage del navegador por
 // su cuenta), y no tiene sentido duplicar archivos de cientos de MB en esta caché.
-const CACHE = 'transcriptor-shell-v1';
+const CACHE = 'transcriptor-shell-v2';
 const SHELL = [
   './',
   'index.html',
