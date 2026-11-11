@@ -813,11 +813,26 @@ function iniciarInstalacion() {
   if (quiereInstalar) history.replaceState(null, '', location.pathname + location.hash);
   let aviso = null;
   let instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const icono = inicio.querySelector('[data-instalar-icono]');
   const pintar = () => {
     inicio.hidden = instalada || !(aviso || sistema !== 'otro');
     const texto = INSTALAR_TEXTOS[aviso ? 'boton' : sistema];
     inicio.querySelectorAll('[data-instalar-texto]').forEach((p) => { p.textContent = texto; });
     inicio.querySelectorAll('[data-instalar]').forEach((b) => { b.hidden = !aviso; });
+    // El ícono también instala al tocarlo, no solo el botón de texto.
+    if (icono) {
+      icono.setAttribute('role', aviso ? 'button' : 'presentation');
+      icono.tabIndex = aviso ? 0 : -1;
+      if (aviso) icono.setAttribute('aria-label', 'Instalar app'); else icono.removeAttribute('aria-label');
+    }
+  };
+  const disparar = async () => {
+    if (!aviso) return;
+    const pendiente = aviso;
+    aviso = null;
+    pendiente.prompt();
+    await pendiente.userChoice;
+    pintar();
   };
   const aplicarIntento = () => {
     if (!quiereInstalar || instalada || inicio.hidden) return;
@@ -840,16 +855,13 @@ function iniciarInstalacion() {
     instalada = true;
     pintar();
   });
-  inicio.querySelectorAll('[data-instalar]').forEach((b) => {
-    b.addEventListener('click', async () => {
-      if (!aviso) return;
-      const pendiente = aviso;
-      aviso = null;
-      pendiente.prompt();
-      await pendiente.userChoice;
-      pintar();
+  inicio.querySelectorAll('[data-instalar]').forEach((b) => { b.addEventListener('click', disparar); });
+  if (icono) {
+    icono.addEventListener('click', disparar);
+    icono.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); disparar(); }
     });
-  });
+  }
   pintar();
   aplicarIntento();
 }
